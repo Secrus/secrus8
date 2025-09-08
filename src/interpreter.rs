@@ -11,20 +11,20 @@ enum StepResult {
     Halt,
 }
 
-pub struct Core {
+pub struct Interpreter {
     state: State,
     display: CLIDisplay,
 }
 
-impl Default for Core {
+impl Default for Interpreter {
     fn default() -> Self {
         Self::new()
     }
 }
 
-impl Core {
+impl Interpreter {
     pub fn new() -> Self {
-        Core {
+        Interpreter {
             state: State::new(),
             display: CLIDisplay::new(),
         }

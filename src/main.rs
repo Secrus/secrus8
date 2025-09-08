@@ -2,7 +2,7 @@ use std::env;
 use std::fs::File;
 use std::io::{self, Read};
 
-use secrus8::chip_core::Core;
+use secrus8::interpreter::Interpreter;
 
 fn main() -> io::Result<()> {
     let args: Vec<String> = env::args().collect();
@@ -34,7 +34,7 @@ fn main() -> io::Result<()> {
     // }
     // println!();
 
-    let mut core = Core::new();
+    let mut core = Interpreter::new();
     core.load_rom(buffer);
     core.run();
 

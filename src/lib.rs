@@ -1,4 +1,4 @@
-pub mod chip_core;
+pub mod interpreter;
 pub mod consts;
 pub mod display;
 pub mod state;
