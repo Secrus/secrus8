@@ -1,6 +1,6 @@
 use std::env;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io;
 
 use secrus8::interpreter::Interpreter;
 
@@ -16,26 +16,10 @@ fn main() -> io::Result<()> {
     let filename = &args[1];
 
     // Open the file in read-only mode
-    let mut file = File::open(filename)?;
-
-    // Read the file contents into a buffer
-    let mut buffer = Vec::new();
-    file.read_to_end(&mut buffer)?;
-
-    // You can now use `buffer` as your binary data
-    println!("Read {} bytes from file '{}'", buffer.len(), filename);
-
-    // println!("Read bytes:");
-    // for (i, byte) in buffer.iter().take(buffer.len()).enumerate() {
-    //     if i % 8 == 0 {
-    //         println!();
-    //     }
-    //     print!("{:02X} ", byte);
-    // }
-    // println!();
+    let file = File::open(filename)?;
 
     let mut core = Interpreter::new();
-    core.load_rom(buffer);
+    core.load_rom(file);
     core.run();
 
     Ok(())
