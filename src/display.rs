@@ -15,12 +15,12 @@ impl Default for CLIDisplay {
 impl CLIDisplay {
     pub fn new() -> Self {
         CLIDisplay {
-            screen: [[0; SCREEN_WIDTH as usize]; SCREEN_HEIGHT as usize],
+            screen: [[0; _]; _],
         }
     }
 
     pub fn clear(&mut self) {
-        self.screen = [[0; SCREEN_WIDTH as usize]; SCREEN_HEIGHT as usize];
+        self.screen = [[0; _]; _];
     }
 
     pub fn show(&self) {
