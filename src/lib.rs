@@ -3,6 +3,20 @@ pub mod display;
 pub mod interpreter;
 pub mod state;
 
-pub struct Chip8Error {}
+#[derive(Debug, PartialEq)]
+pub enum Error {
+    UnknownOpcode(u8)
+}
 
-pub type Result<T> = std::result::Result<T, Chip8Error>;
+impl core::fmt::Display for Error {
+    fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
+        match *self {
+            Self::UnknownOpcode(code) =>
+                write!(f, "Unknown opcode: {:x}", code)
+        }
+    }
+}
+
+impl core::error::Error for Error {}
+
+pub type Result<T> = std::result::Result<T, Error>;

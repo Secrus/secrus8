@@ -1,7 +1,7 @@
 use crate::consts::INITIAL_PC;
 use crate::display::CLIDisplay;
 use crate::state::State;
-use crate::{Chip8Error, Result};
+use crate::{Error, Result};
 use rand::Rng;
 use std::io::{self, Write};
 use std::thread::sleep;
@@ -279,7 +279,7 @@ impl Interpreter {
                 }
             }
             // unknown opcode
-            _ => return Err(Chip8Error {}),
+            (op, _, _, _) => return Err(Error::UnknownOpcode(op)),
         }
 
         Ok(StepResult::Continue)
