@@ -4,7 +4,7 @@ use crate::display::CLIDisplay;
 use crate::parser::Instruction;
 use crate::state::State;
 use rand::Rng;
-use std::io::{self, Write};
+use std::io::{self, prelude::*};
 use std::thread::sleep;
 
 enum StepResult {
@@ -31,10 +31,9 @@ impl Interpreter {
         }
     }
 
-    pub fn load_rom(&mut self, rom: Vec<u8>) {
+    pub fn load_rom<R: Read>(&mut self, mut rom: R) {
         let start = INITIAL_PC as usize;
-        let end = start + rom.len();
-        self.state.ram[start..end].copy_from_slice(&rom);
+        rom.read(&mut self.state.ram[start..]).unwrap();
     }
 
     pub fn run(&mut self) {
