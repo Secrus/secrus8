@@ -30,11 +30,11 @@ pub enum Instruction {
     /// 8XY4 - add VY to VX (with VF as overflow control)
     RegistersSumWithOverflow(usize, usize),
     /// 8XY5 - VX = VX - VY (with VF as overflow control)
-    SubstractRegisterFromRegisterValue(usize, usize),
+    SubtractRegisterFromRegisterValue(usize, usize),
     /// 8XY6 - VX >>= 1, LSB stored in VF
     ShiftRegisterBitsRight(usize),
     /// 8XY7 - VX = VY - VX (with VF as overflow control)
-    SubstractRegisterValueFromRegister(usize, usize),
+    SubtractRegisterValueFromRegister(usize, usize),
     /// 8XYE - VX <<= 1 (with VF as overflow control)
     ShiftRegisterBitsLeft(usize),
     /// 9XY0 - skip next if VX does not equal VY
@@ -109,9 +109,9 @@ impl Instruction {
             (8, n2, n3, 2) => Ok(Instruction::RegistersBitwiseAnd(n2, n3)),
             (8, n2, n3, 3) => Ok(Instruction::RegistersBitwiseXor(n2, n3)),
             (8, n2, n3, 4) => Ok(Instruction::RegistersSumWithOverflow(n2, n3)),
-            (8, n2, n3, 5) => Ok(Instruction::SubstractRegisterFromRegisterValue(n2, n3)),
+            (8, n2, n3, 5) => Ok(Instruction::SubtractRegisterFromRegisterValue(n2, n3)),
             (8, n2, n3, 6) => Ok(Instruction::ShiftRegisterBitsRight(n2)),
-            (8, n2, n3, 7) => Ok(Instruction::SubstractRegisterValueFromRegister(n2, n3)),
+            (8, n2, n3, 7) => Ok(Instruction::SubtractRegisterValueFromRegister(n2, n3)),
             (8, n2, n3, 0xE) => Ok(Instruction::ShiftRegisterBitsLeft(n2)),
             (9, n2, n3, 0) => Ok(Instruction::SkipIfRegistersNotEqual(n2, n3)),
             (0xA, n2, n3, n4) => {

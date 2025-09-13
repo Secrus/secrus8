@@ -143,7 +143,7 @@ impl Interpreter {
                 self.state.registers[register_x] = sum;
                 self.state.registers[0xF] = if overflow { 1 } else { 0 };
             }
-            Instruction::SubstractRegisterFromRegisterValue(register_x, register_y) => {
+            Instruction::SubtractRegisterFromRegisterValue(register_x, register_y) => {
                 let vx = self.state.registers[register_x];
                 let vy = self.state.registers[register_y];
 
@@ -155,7 +155,7 @@ impl Interpreter {
                 self.state.registers[0xF] = self.state.registers[register] & 1;
                 self.state.registers[register] >>= 1;
             }
-            Instruction::SubstractRegisterValueFromRegister(register_x, register_y) => {
+            Instruction::SubtractRegisterValueFromRegister(register_x, register_y) => {
                 let vx = self.state.registers[register_x];
                 let vy = self.state.registers[register_y];
 
