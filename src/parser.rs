@@ -69,6 +69,33 @@ pub enum Instruction {
     LoadMemoryToRegistersAtIndexRegister(usize),
 }
 
+impl TryFrom<u16> for Instruction {
+    type Error = Error;
+
+    fn try_from(opcode: u16) -> Result<Self, Self::Error> {
+        Self::from_opcode(opcode)
+    }
+}
+
+impl TryFrom<[u8; 2]> for Instruction {
+    type Error = Error;
+
+    fn try_from(bytes: [u8; 2]) -> Result<Self, Self::Error> {
+        u16::from_be_bytes(bytes).try_into()
+    }
+}
+
+impl TryFrom<&[u8]> for Instruction {
+    type Error = Error;
+
+    fn try_from(bytes: &[u8]) -> Result<Self, Self::Error> {
+        let (bytes, _) = bytes.split_at_checked(2).ok_or(Error::InsufficientData)?;
+
+        // Unwrap is safe there, as we know that there is enough bytes
+        u16::from_be_bytes(bytes.try_into().unwrap()).try_into()
+    }
+}
+
 impl Instruction {
     pub fn from_opcode(opcode: u16) -> Result<Self, Error> {
         let n1 = ((opcode >> 12) & 0xF) as usize;
