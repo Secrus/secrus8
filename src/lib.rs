@@ -1,18 +1,18 @@
 pub mod consts;
 pub mod display;
 pub mod interpreter;
+mod parser;
 pub mod state;
 
 #[derive(Debug, PartialEq)]
 pub enum Error {
-    UnknownOpcode(u8)
+    UnknownOpcode(u16),
 }
 
 impl core::fmt::Display for Error {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match *self {
-            Self::UnknownOpcode(code) =>
-                write!(f, "Unknown opcode: {:x}", code)
+            Self::UnknownOpcode(code) => write!(f, "Unknown opcode: {:x}", code),
         }
     }
 }

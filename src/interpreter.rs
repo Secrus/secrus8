@@ -1,7 +1,8 @@
+use crate::Result;
 use crate::consts::INITIAL_PC;
 use crate::display::CLIDisplay;
+use crate::parser::Instruction;
 use crate::state::State;
-use crate::{Error, Result};
 use rand::Rng;
 use std::io::{self, Write};
 use std::thread::sleep;
@@ -80,140 +81,114 @@ impl Interpreter {
 
         self.state.pc += 2;
 
-        // Split into 4 nibbles
-        let n1 = b1 >> 4;
-        let n2 = b1 & 0x0F;
-        let n3 = b2 >> 4;
-        let n4 = b2 & 0x0F;
+        let opcode = (b1 as u16) << 8 | (b2 as u16);
 
-        match (n1, n2, n3, n4) {
-            // 00E0 - clear screen
-            (0, 0, 0xE, 0) => {
+        let instruction = Instruction::from_opcode(opcode)?;
+
+        match instruction {
+            Instruction::ClearScreen => {
                 self.display.clear();
             }
-            // 00EE - return from subroutine
-            (0, 0, 0xE, 0xE) => {
+            Instruction::ReturnFromSubroutine => {
                 self.state.pc = self.state.stack.pop().expect("empty stack");
             }
-            // 1NNN - jump to NNN
-            (1, _, _, _) => {
-                let target_address = ((n2 as u16) << 8) | b2 as u16;
-                if instruction_address == target_address {
+            Instruction::Jump(address) => {
+                if instruction_address == address {
                     return Ok(StepResult::Halt);
                 }
             }
-            // 2NNN - call subroutine at NNN
-            (2, _, _, _) => {
+            Instruction::Call(address) => {
                 self.state.stack.push(self.state.pc);
-                self.state.pc = ((n2 as u16) << 8) | b2 as u16;
+                self.state.pc = address;
             }
-            // 3XNN - skip next if VX equals NN
-            (3, _, _, _) => {
-                if self.state.registers[n2 as usize] == b2 {
+            Instruction::SkipIfEqualByte(register, value) => {
+                if self.state.registers[register] == value {
                     self.state.pc += 2
                 }
             }
-            // 4XNN - skip next if VX does not equal NN
-            (4, _, _, _) => {
-                if self.state.registers[n2 as usize] != b2 {
+            Instruction::SkipIfNotEqualByte(register, value) => {
+                if self.state.registers[register] != value {
                     self.state.pc += 2
                 }
             }
-            // 5XY0 - skip next if VX equals VY
-            (5, _, _, 0) => {
-                if self.state.registers[n2 as usize] == self.state.registers[n3 as usize] {
+            Instruction::SkipIfRegistersEqual(register_x, register_y) => {
+                if self.state.registers[register_x] == self.state.registers[register_y] {
                     self.state.pc += 2
                 }
             }
-            // 6XNN - set VX to NN
-            (6, _, _, _) => {
-                self.state.registers[n2 as usize] = b2;
+            Instruction::SetRegisterToValue(register, value) => {
+                self.state.registers[register] = value;
             }
-            // 7XNN - add NN to VX
-            (7, _, _, _) => {
-                let (sum, _) = self.state.registers[n2 as usize].overflowing_add(b2);
-                self.state.registers[n2 as usize] = sum;
+            Instruction::AddToRegister(register, value) => {
+                let (sum, _) = self.state.registers[register].overflowing_add(value);
+                self.state.registers[register] = sum;
             }
-            // 8XY0 - set VX to value of VY
-            (8, _, _, 0) => {
-                self.state.registers[n2 as usize] = self.state.registers[n3 as usize];
+            Instruction::SetRegisterToRegisterValue(register_x, register_y) => {
+                self.state.registers[register_x] = self.state.registers[register_y];
             }
-            // 8XY1 - set VX | VY
-            (8, _, _, 1) => {
-                self.state.registers[n2 as usize] |= self.state.registers[n3 as usize];
+            Instruction::RegistersBitwiseOr(register_x, register_y) => {
+                self.state.registers[register_x] |= self.state.registers[register_y];
             }
-            // 8XY2 - set VX & VY
-            (8, _, _, 2) => {
-                self.state.registers[n2 as usize] &= self.state.registers[n3 as usize];
+            Instruction::RegistersBitwiseAnd(register_x, register_y) => {
+                self.state.registers[register_x] &= self.state.registers[register_y];
             }
-            // 8XY3 - set VX ^ VY
-            (8, _, _, 3) => {
-                self.state.registers[n2 as usize] ^= self.state.registers[n3 as usize];
+            Instruction::RegistersBitwiseXor(register_x, register_y) => {
+                self.state.registers[register_x] ^= self.state.registers[register_y];
             }
-            // 8XY4 - add VY to VX (with VF as overflow control)
-            (8, n2, n3, 4) => {
-                let vx = self.state.registers[n2 as usize];
-                let vy = self.state.registers[n3 as usize];
+            Instruction::RegistersSumWithOverflow(register_x, register_y) => {
+                let vx = self.state.registers[register_x];
+                let vy = self.state.registers[register_y];
 
                 let (sum, overflow) = vx.overflowing_add(vy);
-                self.state.registers[n2 as usize] = sum;
+                self.state.registers[register_x] = sum;
                 self.state.registers[0xF] = if overflow { 1 } else { 0 };
             }
-            // 8XY5 - VX = VX - VY (with VF as overflow control)
-            (8, _, _, 5) => {
-                let vx = self.state.registers[n2 as usize];
-                let vy = self.state.registers[n3 as usize];
+            Instruction::SubstractRegisterFromRegisterValue(register_x, register_y) => {
+                let vx = self.state.registers[register_x];
+                let vy = self.state.registers[register_y];
 
                 let (diff, overflow) = vx.overflowing_sub(vy);
-                self.state.registers[n2 as usize] = diff;
+                self.state.registers[register_x] = diff;
                 self.state.registers[0xF] = if overflow { 0 } else { 1 };
             }
-            // 8XY6 - VX >>= 1, LSB stored in VF
-            (8, _, _, 6) => {
-                self.state.registers[0xF] = self.state.registers[n2 as usize] & 1;
-                self.state.registers[n2 as usize] >>= 1;
+            Instruction::ShiftRegisterBitsRight(register) => {
+                self.state.registers[0xF] = self.state.registers[register] & 1;
+                self.state.registers[register] >>= 1;
             }
-            // 8XY7 - VX = VY - VX (with VF as overflow control)
-            (8, n2, n3, 7) => {
-                let vx = self.state.registers[n2 as usize];
-                let vy = self.state.registers[n3 as usize];
+            Instruction::SubstractRegisterValueFromRegister(register_x, register_y) => {
+                let vx = self.state.registers[register_x];
+                let vy = self.state.registers[register_y];
 
                 let (diff, overflow) = vy.overflowing_sub(vx);
-                self.state.registers[n2 as usize] = diff;
-                // Set VF to 1 if there was NO borrow (overflow is false)
+                self.state.registers[register_x] = diff;
+                // Set VF to 1 if there was NO borrow
                 self.state.registers[0xF] = if overflow { 0 } else { 1 };
             }
-            // 8XYE - VX <<= 1 (with VF as overflow control)
-            (8, _, _, 0xE) => {
-                self.state.registers[0xF] = self.state.registers[n2 as usize] >> 7;
-                self.state.registers[n2 as usize] <<= 1;
+            Instruction::ShiftRegisterBitsLeft(register) => {
+                self.state.registers[0xF] = self.state.registers[register] >> 7;
+                self.state.registers[register] <<= 1;
             }
-            // 9XY0 - skip next if VX does not equal VY
-            (9, _, _, 0) => {
-                if self.state.registers[n2 as usize] != self.state.registers[n3 as usize] {
+            Instruction::SkipIfRegistersNotEqual(register_x, register_y) => {
+                if self.state.registers[register_x] != self.state.registers[register_y] {
                     self.state.pc += 2;
                 }
             }
-            // ANNN - set I to NNN
-            (0xA, _, _, _) => {
-                self.state.index_register = ((n2 as u16) << 8) | b2 as u16;
+            Instruction::SetIndexRegisterToValue(value) => {
+                self.state.index_register = value;
             }
-            // BNNN - jump to V0 + NNN
-            (0xB, _, _, _) => {
-                self.state.pc = self.state.registers[0] as u16 + ((n2 as u16) << 8 | b2 as u16);
+            Instruction::JumpByValue(value) => {
+                self.state.pc = self.state.registers[0] as u16 + value;
             }
-            // CXNN - set VX to rand(0, 255) & NN
-            (0xC, _, _, _) => {
+            Instruction::SetRegisterToRandAndValue(register, value) => {
                 let mut rng = rand::rng();
                 let n: u8 = rng.random_range(0..=255);
-                self.state.registers[n2 as usize] = n & b2;
+                self.state.registers[register] = n & value;
             }
-            // DXYN - draw a sprite
-            (0xD, vx, vy, n) => {
-                let x: u8 = self.state.registers[vx as usize];
-                let y: u8 = self.state.registers[vy as usize];
+            Instruction::DrawSprite(register_x, register_y, sprite) => {
+                let x: u8 = self.state.registers[register_x];
+                let y: u8 = self.state.registers[register_y];
                 let start = self.state.index_register as usize;
-                let end = (self.state.index_register + n as u16) as usize;
+                let end = (self.state.index_register + sprite as u16) as usize;
                 self.state.registers[0xF] = {
                     if self.display.draw(x, y, &self.state.ram[start..end]) {
                         1
@@ -223,35 +198,28 @@ impl Interpreter {
                 };
                 self.display.show();
             }
-            // EX9E - skip next if key == VX
-            (0xE, _, 9, 0xE) => {
+            Instruction::SkipIfKeyEqualsRegister(register) => {
                 unimplemented!();
             }
-            // EXA1 - skip next if key != VX
-            (0xE, _, 0xA, 1) => {
+            Instruction::SkipIfKeyNotEqualsRegister(register) => {
                 unimplemented!();
             }
-            // FX07 - set VX to delay timer value
-            (0xF, _, 0, 7) => {
+            Instruction::SetRegisterToDelayTimerValue(register) => {
                 self.update_timers();
-                self.state.registers[n2 as usize] = self.state.delay_timer;
+                self.state.registers[register] = self.state.delay_timer;
             }
-            // FX15 - set delay timer to VX
-            (0xF, _, 1, 5) => {
-                self.state.delay_timer = self.state.registers[n2 as usize];
+            Instruction::SetDelayTimerToRegisterValue(register) => {
+                self.state.delay_timer = self.state.registers[register];
             }
-            // FX18 - set sound timer to VX
-            (0xF, _, 1, 8) => {
-                self.state.sound_timer = self.state.registers[n2 as usize];
+            Instruction::SetSoundTimerToRegisterValue(register) => {
+                self.state.sound_timer = self.state.registers[register];
             }
-            // FX29 - set I to location of sprite for character in VX
-            (0xF, n2, 2, 9) => {
-                let character = self.state.registers[n2 as usize];
+            Instruction::SetIndexRegisterToSpriteForRegister(register) => {
+                let character = self.state.registers[register];
                 self.state.index_register = 0x50 + (character as u16 * 5);
             }
-            // FX33 - store binary coded decimal at memory under I(I+1)(I+2)
-            (0xF, n2, 3, 3) => {
-                let num = self.state.registers[n2 as usize];
+            Instruction::StoreBinaryCodedDecimalAtIndexRegisterValue(register) => {
+                let num = self.state.registers[register];
                 let i = self.state.index_register as usize;
                 // Hundreds digit
                 self.state.ram[i] = num / 100;
@@ -260,26 +228,21 @@ impl Interpreter {
                 // Ones digit
                 self.state.ram[i + 2] = num % 10;
             }
-            // FX1E - add VX to I (don't consider overflow)
-            (0xF, _, 1, 0xE) => {
-                self.state.index_register += self.state.registers[n2 as usize] as u16;
+            Instruction::AddRegisterToIndexRegister(register) => {
+                self.state.index_register += self.state.registers[register] as u16;
             }
-            // FX55 - dump registers V0 to VX in memory, starting from I
-            (0xF, _, 5, 5) => {
-                for ri in 0..=n2 {
+            Instruction::DumpRegistersToMemoryAtIndexRegister(register) => {
+                for ri in 0..=register {
                     self.state.ram[(self.state.index_register + ri as u16) as usize] =
-                        self.state.registers[ri as usize];
+                        self.state.registers[ri];
                 }
             }
-            // FX65 - load memory starting from I into V0 to VX
-            (0xF, _, 6, 5) => {
-                for ri in 0..=n2 {
-                    self.state.registers[ri as usize] =
+            Instruction::LoadMemoryToRegistersAtIndexRegister(register) => {
+                for ri in 0..=register {
+                    self.state.registers[ri] =
                         self.state.ram[(self.state.index_register + ri as u16) as usize];
                 }
             }
-            // unknown opcode
-            (op, _, _, _) => return Err(Error::UnknownOpcode(op)),
         }
 
         Ok(StepResult::Continue)
