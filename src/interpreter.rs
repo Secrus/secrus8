@@ -7,6 +7,7 @@ use rand::Rng;
 use std::io::{self, Write};
 use std::thread::sleep;
 
+#[derive(Debug, PartialEq, Eq)]
 enum StepResult {
     Continue,
     Halt,
@@ -37,7 +38,7 @@ impl Interpreter {
         self.state.ram[start..end].copy_from_slice(&rom);
     }
 
-    pub fn run(&mut self) {
+    pub fn run(&mut self) -> Result<()> {
         // --- Timing Configuration ---
         const TARGET_FPS: u32 = 60;
         const TARGET_IPS: u32 = 700;
@@ -45,20 +46,12 @@ impl Interpreter {
         let frame_duration = std::time::Duration::from_secs_f32(1.0 / TARGET_FPS as f32);
 
         // --- Main Emulator Loop ---
-        'main_loop: loop {
+        loop {
             let frame_start = std::time::Instant::now();
 
             for _ in 0..INSTRUCTIONS_PER_FRAME {
-                match self.step() {
-                    Ok(StepResult::Continue) => {}
-                    Ok(StepResult::Halt) => {
-                        println!("\nProgram finished. Exiting.");
-                        break 'main_loop;
-                    }
-                    Err(_) => {
-                        eprintln!("\nExecution error. Exiting.");
-                        break 'main_loop;
-                    }
+                if self.step()? == StepResult::Halt {
+                    return Ok(())
                 }
             }
 
