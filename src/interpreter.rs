@@ -74,16 +74,10 @@ impl Interpreter {
     fn step(&mut self) -> Result<StepResult> {
         let instruction_address = self.state.pc;
 
-        let b1 = self.state.ram[self.state.pc as usize];
-        let b2 = self.state.ram[(self.state.pc + 1) as usize];
+        let instruction = self.state.ram[(self.state.pc as usize)..].try_into()?;
 
         // Increment program counter by 2
-
         self.state.pc += 2;
-
-        let opcode = (b1 as u16) << 8 | (b2 as u16);
-
-        let instruction = Instruction::from_opcode(opcode)?;
 
         match instruction {
             Instruction::ClearScreen => {
