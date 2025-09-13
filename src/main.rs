@@ -1,10 +1,10 @@
 use std::env;
 use std::fs::File;
-use std::io::{self, Read};
+use std::io::Read;
 
 use secrus8::interpreter::Interpreter;
 
-fn main() -> io::Result<()> {
+fn main() -> Result<(), Box<dyn std::error::Error>> {
     let args: Vec<String> = env::args().collect();
 
     // Check that a filename was provided
@@ -36,7 +36,7 @@ fn main() -> io::Result<()> {
 
     let mut core = Interpreter::new();
     core.load_rom(buffer);
-    core.run();
+    core.run()?;
 
     Ok(())
 }
